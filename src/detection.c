@@ -1,5 +1,5 @@
 #define _POSIX_C_SOURCE 200112L
-#define _XOPEN_SOURCE 700
+#define _XOPEN_SOURCE 800
 #include <magic.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -351,4 +351,35 @@ void get_thumbnail(source_buffer *src)
     free(blob);
     DestroyMagickWand(wand);
     MagickWandTerminus();
+}
+
+void *thumbnail_to_sixel(void *thumbnail, size_t thumbnail_len,
+                         size_t *sixel_len)
+{
+    MagickWand *wand = NewMagickWand();
+    MagickBooleanType status;
+    unsigned char *blob;
+
+    status = MagickReadImageBlob(wand, thumbnail, thumbnail_len);
+    if (status == MagickFalse)
+    {
+        ExceptionType severity;
+        char *error = MagickGetException(wand, &severity);
+        fprintf(stderr, "Error reading image blob: %s\n", error);
+        MagickRelinquishMemory(error);
+        DestroyMagickWand(wand);
+        MagickWandTerminus();
+        return NULL;
+    }
+
+    MagickSetImageFormat(wand, "sixel");
+    blob = MagickGetImageBlob(wand, sixel_len);
+    void *sixel = xmalloc(*sixel_len);
+    memcpy(sixel, blob, *sixel_len);
+
+    free(blob);
+    DestroyMagickWand(wand);
+    MagickWandTerminus();
+
+    return sixel;
 }

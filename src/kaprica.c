@@ -1,5 +1,5 @@
 #define _POSIX_C_SOURCE 200112L
-#define _XOPEN_SOURCE 700
+#define _XOPEN_SOURCE 800
 #include <sys/types.h>
 #include <wayland-client-core.h>
 #include <wayland-client.h>
@@ -38,13 +38,14 @@ struct config
     bool id;
     bool reverse_search;
     bool password;
+    bool sixel;
+    bool snippets;
     char accept;
     char *db_path;
-    bool snippets;
-    enum search_type search_type;
     char *type;
-    int64_t limit;
+    enum search_type search_type;
     enum verb action;
+    int64_t limit;
 };
 
 static struct config options = {.foreground = false,
@@ -57,6 +58,7 @@ static struct config options = {.foreground = false,
                                 .accept = 'n',
                                 .db_path = NULL,
                                 .snippets = false,
+                                .sixel = false,
                                 .search_type = CONTENT,
                                 .clear = false,
                                 .paste_once = false,
@@ -145,6 +147,7 @@ static const struct option search[] = {
     {"snippet", no_argument, NULL, 's'},
     {"list", no_argument, NULL, 'L'},
     {"type", no_argument, NULL, 't'},
+    {"sixel", no_argument, NULL, 'x'},
     {"glob", no_argument, NULL, 'g'},
     {"database", required_argument, NULL, 'D'},
     {0, 0, 0, 0}};
@@ -164,6 +167,7 @@ static const char search_help[] =
     "    -t, --type             Search by MIME type\n"
     "    -g, --glob             Search by glob pattern\n"
     "    -L, --list             Output in machine-readable format\n"
+    "    -x, --sixel            Output in sixel format\n"
     "    -D, --database </path> Specify the path to the history database\n";
 
 static const struct option delete[] = {
@@ -219,7 +223,7 @@ static void parse_options(int argc, char *argv[])
     else if (!strcmp(argv[1], "search"))
     {
         action = (void *)search;
-        opt_string = "hvl:itLsD:g";
+        opt_string = "hvl:itLsD:gx";
         options.action = SEARCH;
     }
     else if (!strcmp(argv[1], "delete"))
@@ -307,6 +311,9 @@ static void parse_options(int argc, char *argv[])
             break;
         case 's':
             options.snippets = true;
+            break;
+        case 'x':
+            options.sixel = true;
             break;
         case 'o':
             options.paste_once = true;
@@ -808,6 +815,17 @@ int main(int argc, char *argv[])
         for (int i = 0; i < found; i++)
         {
             source_clear(src);
+            size_t sixel_len = 0, thumbnail_len = 0;
+            void *thumbnail = NULL, *sixel = NULL;
+            if (options.sixel)
+            {
+                thumbnail = database_get_thumbnail(db, ids[i], &thumbnail_len);
+                sixel = (thumbnail_len > 0)
+                            ? thumbnail_to_sixel(thumbnail, thumbnail_len,
+                                                 &sixel_len)
+                            : NULL;
+                free(thumbnail);
+            }
             char *snippet = database_get_snippet(db, ids[i]);
 
             if (!options.snippets)
@@ -828,7 +846,14 @@ int main(int argc, char *argv[])
                 {
                     printf("\"");
                 }
-                printf("%s", snippet);
+                if (options.sixel && sixel_len > 0)
+                {
+                    write(STDOUT_FILENO, sixel, sixel_len);
+                }
+                else
+                {
+                    printf("%s", snippet);
+                }
                 if (!options.list)
                 {
                     printf("...\"");
@@ -837,6 +862,11 @@ int main(int argc, char *argv[])
             printf("\n");
 
             free(snippet);
+            if (thumbnail_len > 0)
+            {
+                free(sixel);
+                thumbnail_len = 0, sixel_len = 0;
+            }
         }
     }
     else if (options.action == DELETE)
