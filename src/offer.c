@@ -1,5 +1,5 @@
 #define _POSIX_C_SOURCE 200112L
-#define _XOPEN_SOURCE 700
+#define _XOPEN_SOURCE 800
 #define _GNU_SOURCE
 #include <wayland-client.h>
 #include <errno.h>

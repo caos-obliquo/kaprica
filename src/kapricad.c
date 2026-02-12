@@ -1,5 +1,5 @@
 #define _POSIX_C_SOURCE 200112L
-#define _XOPEN_SOURCE 700
+#define _XOPEN_SOURCE 800
 #include <wayland-client.h>
 #include <poll.h>
 #include <signal.h>
