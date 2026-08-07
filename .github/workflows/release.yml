@@ -15,7 +15,7 @@ jobs:
           fetch-depth: 0 # need full history + tags for major-bump detection
 
       - name: Install build dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential meson ninja-build pkg-config libgtk-4-dev libmagickwand-dev libinih-dev libmagic-dev
+        run: sudo apt-get update && sudo apt-get install -y build-essential meson ninja-build pkg-config libgtk-4-dev libmagickwand-dev libinih-dev libmagic-dev libxxhash-dev
 
       - name: Build
         run: |
