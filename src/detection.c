@@ -6,7 +6,17 @@
 #include <stdbool.h>
 #include <string.h>
 #include <time.h>
-#include <MagickWand/MagickWand.h>
+#if defined(__has_include)
+#  if __has_include(<MagickWand/MagickWand.h>)
+#    include <MagickWand/MagickWand.h>
+#  elif __has_include(<wand/MagickWand.h>)
+#    include <wand/MagickWand.h>
+#  else
+#    error "MagickWand headers not found"
+#  endif
+#else
+#  include <MagickWand/MagickWand.h>
+#endif
 #include "xmalloc.h"
 #include "detection.h"
 #include "clipboard.h"
