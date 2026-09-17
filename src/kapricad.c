@@ -332,6 +332,25 @@ int main(int argc, char *argv[])
 
             if (clip_get_selection(clip))
             {
+                /* Storm governor: a client firing selection events
+                 * continuously would pin a core ingesting offers */
+                static int storm_count = 0;
+                static time_t storm_window = 0;
+                time_t now = time(NULL);
+                if (now - storm_window > 10)
+                {
+                    storm_window = now;
+                    storm_count = 0;
+                }
+                if (++storm_count > 30)
+                {
+                    fprintf(stderr,
+                            "kapd: selection storm (%d in 10s), back off\n",
+                            storm_count);
+                    sleep(2);
+                    storm_count = 0;
+                    storm_window = time(NULL);
+                }
                 if (clip->selection_source->password)
                 {
                     printf("Password detected, not saving\n");
