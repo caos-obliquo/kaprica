@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200112L
 #define _XOPEN_SOURCE 800
 #include <magic.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -92,6 +93,10 @@ static bool is_text(const void *data, size_t length)
 
 static bool is_utf8_text(const char *mime_type)
 {
+    if (!mime_type)
+    {
+        return false;
+    }
     if (!strcmp("UTF8_STRING", mime_type) ||
         !strcmp("text/plain;charset=utf-8", mime_type))
     {
@@ -102,6 +107,10 @@ static bool is_utf8_text(const char *mime_type)
 
 static bool is_explicit_text(const char *mime_type)
 {
+    if (!mime_type)
+    {
+        return false;
+    }
     /* Known bad mime types that are either not text or not useful */
     if (!strncmp("text/_moz_htmlinfo", mime_type,
                  strlen("text/_moz_htmlinfo")) ||
@@ -122,6 +131,10 @@ static bool is_explicit_text(const char *mime_type)
 
 static bool is_image(const char *mime_type)
 {
+    if (!mime_type)
+    {
+        return false;
+    }
     if (!strncmp("image/", mime_type, strlen("image/")))
     {
         return true;
@@ -261,6 +274,11 @@ static void generate_stamp(source_buffer *src)
     /* Replace '\n' with a space */
     src->snippet[strlen(src->snippet) - 1] = ' ';
 
+    /* An offer with zero readable types has no mime to stamp with */
+    if (src->num_types == 0 || !src->types[0])
+    {
+        return;
+    }
     size_t size = strlen(src->types[0]) + strlen(src->snippet) + 1;
     src->snippet = xrealloc(src->snippet, (size * sizeof(char)));
     src->snippet = strcat(src->snippet, src->types[0]);
@@ -268,6 +286,14 @@ static void generate_stamp(source_buffer *src)
 
 void get_snippet(source_buffer *src)
 {
+    /* Empty offers carry no types: stamp only, never index types[] */
+    if (src->num_types == 0)
+    {
+        time_t ltime = time(NULL);
+        snprintf(src->snippet, SNIPPET_SIZE, "%s",
+                 asctime(localtime(&ltime)));
+        return;
+    }
     uint8_t snip_type = find_write_type(src);
 
     if (!is_utf8_text(src->types[snip_type]) &&
